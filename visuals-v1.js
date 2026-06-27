@@ -6,6 +6,10 @@ if (!window.vx) {
   window.vx = {}
 }
 
+if (window.vx.raf) {
+  cancelAnimationFrame(window.vx.raf)
+}
+
 if (!window.vx.canvas) {
   window.vx.canvas = document.createElement('canvas')
   window.vx.canvas.id = 'strudelCanvas'
@@ -17,31 +21,23 @@ if (!window.vx.canvas) {
 window.vx.ctx = window.vx.canvas.getContext('2d')
 window.vx.canvas.width = innerWidth
 window.vx.canvas.height = innerHeight
-
 window.vx.layers = []
 
-
-// =======================
-// 2. GRID VISUAL
-// =======================
-
-function grid(cells, cols, rows) {
+function grid(cells, cols, rows, showGrid, colors) {
   return {
     type: "grid",
     cells: cells,
+    colorsPattern: colors || "cyan",
     cols: cols,
     rows: rows,
     impacts: Array(cols * rows).fill(0),
+    colors: Array(cols * rows).fill(null),
     decay: 0.93,
     baseRadius: 18,
-    gain: 80
+    gain: 80,
+    showGrid: showGrid === true
   }
 }
-
-
-// =======================
-// 3. DESENHO DO GRID
-// =======================
 
 function drawGridLayer(layer) {
   var ctx = window.vx.ctx
@@ -53,20 +49,21 @@ function drawGridLayer(layer) {
   for (var i = 0; i < total; i++) {
     var col = i % layer.cols
     var row = Math.floor(i / layer.cols)
-
     var x = col * cellW
     var y = row * cellH
     var cx = x + cellW / 2
     var cy = y + cellH / 2
-
     var impact = layer.impacts[i] || 0
     var radius = layer.baseRadius + impact * layer.gain
+    var color = layer.colors[i] || "cyan"
 
-    ctx.strokeStyle = 'rgba(255,255,255,0.08)'
-    ctx.lineWidth = 1
-    ctx.strokeRect(x, y, cellW, cellH)
+    if (layer.showGrid) {
+      ctx.strokeStyle = 'rgba(255,255,255,0.08)'
+      ctx.lineWidth = 1
+      ctx.strokeRect(x, y, cellW, cellH)
+    }
 
-    ctx.strokeStyle = 'rgba(0,195,255,0.8)'
+    ctx.strokeStyle = color
     ctx.lineWidth = 2 + impact * 6
     ctx.beginPath()
     ctx.arc(cx, cy, radius, 0, Math.PI * 2)
@@ -76,35 +73,21 @@ function drawGridLayer(layer) {
   }
 }
 
+function vxLoop() {
+  var ctx = window.vx.ctx
+  var canvas = window.vx.canvas
 
-// =======================
-// 4. LOOP VISUAL
-// =======================
+  ctx.fillStyle = 'rgba(10,10,25,0.2)'
+  ctx.fillRect(0, 0, canvas.width, canvas.height)
 
-if (!window.vx.started) {
-  window.vx.started = true
-
-  function vxLoop() {
-    var ctx = window.vx.ctx
-    var canvas = window.vx.canvas
-
-    ctx.fillStyle = 'rgba(10,10,25,0.2)'
-    ctx.fillRect(0, 0, canvas.width, canvas.height)
-
-    for (var i = 0; i < window.vx.layers.length; i++) {
-      drawGridLayer(window.vx.layers[i])
-    }
-
-    requestAnimationFrame(vxLoop)
+  for (var i = 0; i < window.vx.layers.length; i++) {
+    drawGridLayer(window.vx.layers[i])
   }
 
-  requestAnimationFrame(vxLoop)
+  window.vx.raf = requestAnimationFrame(vxLoop)
 }
 
-
-// =======================
-// 5. PONTE STRUDEL
-// =======================
+window.vx.raf = requestAnimationFrame(vxLoop)
 
 register('visuals', function (spec, pat) {
   var layer = spec
@@ -116,9 +99,11 @@ register('visuals', function (spec, pat) {
     function (x) {
       return x
         .n(layer.cells)
+        .color(layer.colorsPattern)
         .gain(0)
         .onTrigger(function (e) {
           var raw = 0
+          var col = null
 
           if (e.value && e.value.n !== undefined) {
             raw = e.value.n
@@ -132,34 +117,34 @@ register('visuals', function (spec, pat) {
             raw = e.number
           }
 
-          var total = layer.cols * layer.rows
-          var cell = Math.floor(Number(raw)) % total
-
-          if (cell < 0) {
-            cell = cell + total
+          if (e.value && e.value.color !== undefined) {
+            col = e.value.color
+          } else if (e.color !== undefined) {
+            col = e.color
           }
 
+          var total = layer.cols * layer.rows
+          var cell = Math.floor(Number(raw)) % total
+          if (cell < 0) cell = cell + total
+
           window.vx.layers[id].impacts[cell] = 1
+          window.vx.layers[id].colors[cell] = col || layer.colorsPattern
         })
     }
   )
 })
-
-//exemplo de música que dispara eventos musicais
-//uncomment
-// =======================
-// 6. MÚSICA + VISUAIS
-// =======================
 /*
+// exemplos
 t1: s("bd")
-  .visuals(grid("0 1 2 3", 4, 4))
+  .visuals(grid("0 1 2 3", 3, 3, false, "red"))
 
 t2: s("~ sd ~ sd")
-  .visuals(grid("4 5 6 7", 4, 4))
+  .visuals(grid("4 5 6 7", 2, 2, false, ["#00ffff"]))
 
 t3: s("hh*8")
   .gain(0.4)
-  .visuals(grid("8 9 10 11".fast(2), 4, 4))
+  .visuals(grid(rand.range(0, 12), 8, 8, false, "yellow cyan magenta"))
 
 t4: s("cp*2")
-  .visuals(grid(sine.range(12, 15), 4, 4))*/
+  .visuals(grid(sine.range(12, 15), 6, 4, false, ["#ff00aa", "#00ff88", "#4488ff"]))
+  */
