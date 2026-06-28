@@ -40,7 +40,8 @@ Tenho especial interesse em discutir:
 * integração mais profunda com o sistema de Patterns do Strudel;
 * desempenho;
 * novas primitivas gráficas;
-* compatibilidade com a filosofia do Strudel.
+* compatibilidade com a filosofia do Strudel;
+* melhorias na integração com criação de padrões e funções nativas Strudel e mini-notations Tidal-Strudel e Mondo.
 
 Toda colaboração é muito bem-vinda.
 
